@@ -33,3 +33,7 @@ variable "gateway_subnet_prefixes" {
 variable "tags" {
   type = map(string)
 }
+
+variable "nsg_name" {
+  type = string
+}

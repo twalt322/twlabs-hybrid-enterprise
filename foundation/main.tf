@@ -17,6 +17,7 @@ module "networking" {
   workload_subnet_prefixes = ["10.0.40.0/25"]
   gateway_subnet_name      = "GatewaySubnet"
   gateway_subnet_prefixes  = ["10.0.40.128/27"]
+  nsg_name                 = "nsg-snet-workload"
 
   tags = local.common_tags
 }
