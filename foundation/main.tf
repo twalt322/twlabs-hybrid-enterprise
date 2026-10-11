@@ -21,3 +21,13 @@ module "networking" {
 
   tags = local.common_tags
 }
+
+resource "azurerm_public_ip" "vpn" {
+  name                = "pip-vpn-gateway"
+  location            = local.location
+  resource_group_name = azurerm_resource_group.hybrid.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+
+  tags = local.common_tags
+}
