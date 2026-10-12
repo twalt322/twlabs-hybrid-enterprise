@@ -29,3 +29,7 @@ output "vpn_public_ip_id" {
 output "vpn_public_ip_address" {
   value = azurerm_public_ip.vpn.ip_address
 }
+
+output "key_vault_id" {
+  value = azurerm_key_vault.hybrid.id
+}

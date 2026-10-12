@@ -44,7 +44,7 @@ resource "azurerm_virtual_network_gateway_connection" "s2s" {
   virtual_network_gateway_id = azurerm_virtual_network_gateway.vpn.id
   local_network_gateway_id   = azurerm_local_network_gateway.home.id
 
-  shared_key = var.vpn_shared_key
+  shared_key = data.azurerm_key_vault_secret.vpn_shared_key.value
 
   tags = local.common_tags
 }

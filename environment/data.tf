@@ -8,3 +8,8 @@ data "terraform_remote_state" "foundation" {
     key                  = "twlabs.foundation.tfstate"
   }
 }
+
+data "azurerm_key_vault_secret" "vpn_shared_key" {
+  name         = "vpn-shared-key"
+  key_vault_id = data.terraform_remote_state.foundation.outputs.key_vault_id
+}
