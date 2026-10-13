@@ -37,3 +37,8 @@ variable "tags" {
 variable "nsg_name" {
   type = string
 }
+
+variable "dns_servers" {
+  type        = list(string)
+  description = "Custom DNS servers for the virtual network"
+}
