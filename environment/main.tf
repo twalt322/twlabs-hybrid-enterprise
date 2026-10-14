@@ -48,3 +48,18 @@ resource "azurerm_virtual_network_gateway_connection" "s2s" {
 
   tags = local.common_tags
 }
+
+module "compute" {
+  source = "../modules/compute"
+
+  resource_group_name  = data.terraform_remote_state.foundation.outputs.resource_group_name
+  location             = data.terraform_remote_state.foundation.outputs.location
+  vmss_name            = "vmss-twlabs-workload"
+  vm_size              = "Standard_D2alds_v7"
+  instance_count       = 2
+  subnet_id            = data.terraform_remote_state.foundation.outputs.workload_subnet_id
+  admin_username       = "twlabsadmin"
+  admin_ssh_public_key = file("~/.ssh/twlabs_hybrid_vmss.pub")
+
+  tags = local.common_tags
+}
