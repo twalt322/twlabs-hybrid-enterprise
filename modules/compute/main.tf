@@ -6,6 +6,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "workload" {
   instances                       = var.instance_count
   admin_username                  = var.admin_username
   disable_password_authentication = true
+  custom_data = base64encode(file("${path.module}/cloud-init.yaml"))
 
   admin_ssh_key {
     username   = var.admin_username
