@@ -49,3 +49,13 @@ resource "azurerm_key_vault" "hybrid" {
 
   tags = local.common_tags
 }
+
+resource "azurerm_container_registry" "apps" {
+  name                = "acrtwlabsapps"
+  resource_group_name = azurerm_resource_group.hybrid.name
+  location            = local.location
+  sku                 = "Basic"
+  admin_enabled       = false
+
+  tags = local.common_tags
+}

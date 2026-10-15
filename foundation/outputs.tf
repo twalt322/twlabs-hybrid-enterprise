@@ -33,3 +33,11 @@ output "vpn_public_ip_address" {
 output "key_vault_id" {
   value = azurerm_key_vault.hybrid.id
 }
+
+output "acr_login_server" {
+  value = azurerm_container_registry.apps.login_server
+}
+
+output "acr_id" {
+  value = azurerm_container_registry.apps.id
+}

@@ -63,3 +63,9 @@ module "compute" {
 
   tags = local.common_tags
 }
+
+resource "azurerm_role_assignment" "vmss_acr_pull" {
+  scope                = data.terraform_remote_state.foundation.outputs.acr_id
+  role_definition_name = "AcrPull"
+  principal_id         = module.compute.principal_id
+}
