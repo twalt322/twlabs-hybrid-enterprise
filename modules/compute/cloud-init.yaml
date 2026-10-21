@@ -1,25 +1,56 @@
 #cloud-config
+write_files:
+  - path: /etc/nginx/sites-available/twlabs-apps
+    permissions: '0644'
+    content: |
+      server {
+          listen 80;
+          server_name akatsuki.twlabs.cloud;
 
-package_update: true
+          location / {
+              proxy_pass http://127.0.0.1:8081;
+          }
+      }
 
-packages:
-  - docker.io
-  - nginx
-  - apt-transport-https
-  - ca-certificates
-  - curl
-  - gnupg
-  - lsb-release
+      server {
+          listen 80;
+          server_name pirates.twlabs.cloud;
+
+          location / {
+              proxy_pass http://127.0.0.1:8082;
+          }
+      }
+
+      server {
+          listen 80;
+          server_name avengers.twlabs.cloud;
+
+          location / {
+              proxy_pass http://127.0.0.1:8083;
+          }
+      }
 
 runcmd:
+  - |
+    until getent hosts archive.ubuntu.com; do
+      echo "Waiting for DNS..."
+      sleep 5
+    done
+
+  - apt-get update
+  - apt-get install -y docker.io nginx apt-transport-https ca-certificates curl gnupg lsb-release
+
   - systemctl enable --now docker
   - systemctl enable --now nginx
+
   - mkdir -p /opt/twlabs
-  - touch /opt/twlabs/bootstrap-complete
 
   - mkdir -p /etc/apt/keyrings
+
   - curl -sLS https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg
+
   - chmod go+r /etc/apt/keyrings/microsoft.gpg
+
   - |
     AZ_DIST=$(lsb_release -cs)
     echo "Types: deb
@@ -28,5 +59,33 @@ runcmd:
     Components: main
     Architectures: $(dpkg --print-architecture)
     Signed-by: /etc/apt/keyrings/microsoft.gpg" > /etc/apt/sources.list.d/azure-cli.sources
+
   - apt-get update
   - apt-get install -y azure-cli
+
+  - |
+    until az login --identity >/dev/null 2>&1; do
+      echo "Waiting for managed identity..."
+      sleep 5
+    done
+
+  - |
+    until az acr login --name acrtwlabsapps; do
+      echo "Waiting for ACR access..."
+      sleep 5
+    done
+
+  - docker pull acrtwlabsapps.azurecr.io/twlabs-akatsuki:1.0
+  - docker pull acrtwlabsapps.azurecr.io/twlabs-pirates:1.0
+  - docker pull acrtwlabsapps.azurecr.io/twlabs-avengers:1.0
+
+  - docker run -d --restart unless-stopped --name akatsuki -p 8081:80 acrtwlabsapps.azurecr.io/twlabs-akatsuki:1.0
+  - docker run -d --restart unless-stopped --name pirates -p 8082:80 acrtwlabsapps.azurecr.io/twlabs-pirates:1.0
+  - docker run -d --restart unless-stopped --name avengers -p 8083:80 acrtwlabsapps.azurecr.io/twlabs-avengers:1.0
+
+  - rm -f /etc/nginx/sites-enabled/default
+  - ln -s /etc/nginx/sites-available/twlabs-apps /etc/nginx/sites-enabled/twlabs-apps
+  - nginx -t
+  - systemctl reload nginx
+
+  - touch /opt/twlabs/bootstrap-complete

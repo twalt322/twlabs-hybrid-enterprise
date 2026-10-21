@@ -34,3 +34,8 @@ variable "admin_ssh_public_key" {
   type        = string
   description = "SSH public key used for the VMSS administrator account"
 }
+
+variable "backend_address_pool_ids" {
+  type    = list(string)
+  default = []
+}

@@ -37,6 +37,8 @@ resource "azurerm_linux_virtual_machine_scale_set" "workload" {
       name      = "internal"
       primary   = true
       subnet_id = var.subnet_id
+      
+      load_balancer_backend_address_pool_ids = var.backend_address_pool_ids
     }
   }
 }
