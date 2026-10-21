@@ -61,6 +61,10 @@ module "compute" {
   admin_username       = "twlabsadmin"
   admin_ssh_public_key = file("~/.ssh/twlabs_hybrid_vmss.pub")
 
+  backend_address_pool_ids = [
+    azurerm_lb_backend_address_pool.vmss.id
+  ]
+
   tags = local.common_tags
 }
 
@@ -68,4 +72,43 @@ resource "azurerm_role_assignment" "vmss_acr_pull" {
   scope                = data.terraform_remote_state.foundation.outputs.acr_id
   role_definition_name = "AcrPull"
   principal_id         = module.compute.principal_id
+}
+
+resource "azurerm_lb" "internal" {
+  name                = "lb-twlabs-internal"
+  location            = data.terraform_remote_state.foundation.outputs.location
+  resource_group_name = data.terraform_remote_state.foundation.outputs.resource_group_name
+  sku                 = "Standard"
+
+  frontend_ip_configuration {
+    name                          = "internal-frontend"
+    subnet_id                     = data.terraform_remote_state.foundation.outputs.workload_subnet_id
+    private_ip_address_allocation = "Static"
+    private_ip_address            = "10.0.40.100"
+  }
+
+  tags = local.common_tags
+}
+
+resource "azurerm_lb_backend_address_pool" "vmss" {
+  name            = "backend-vmss"
+  loadbalancer_id = azurerm_lb.internal.id
+}
+
+resource "azurerm_lb_probe" "http" {
+  name            = "http-probe"
+  loadbalancer_id = azurerm_lb.internal.id
+  protocol        = "Tcp"
+  port            = 80
+}
+
+resource "azurerm_lb_rule" "http" {
+  name                           = "http-rule"
+  loadbalancer_id                = azurerm_lb.internal.id
+  protocol                       = "Tcp"
+  frontend_port                  = 80
+  backend_port                   = 80
+  frontend_ip_configuration_name = "internal-frontend"
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.vmss.id]
+  probe_id                       = azurerm_lb_probe.http.id
 }
