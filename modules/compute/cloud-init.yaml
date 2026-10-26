@@ -5,28 +5,140 @@ write_files:
     content: |
       server {
           listen 80;
+          server_name akatsuki.twlabs.cloud pirates.twlabs.cloud avengers.twlabs.cloud;
+
+          return 301 https://$host$request_uri;
+      }
+
+      server {
+          listen 443 ssl;
           server_name akatsuki.twlabs.cloud;
 
+          ssl_certificate /etc/nginx/tls/fullchain.pem;
+          ssl_certificate_key /etc/nginx/tls/privkey.pem;
+
+          location /oauth2/ {
+              proxy_pass http://127.0.0.1:4180;
+
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Auth-Request-Redirect $scheme://$host$request_uri;
+          }
+
+          location = /oauth2/auth-akatsuki {
+              internal;
+
+              proxy_pass http://127.0.0.1:4180/oauth2/auth?allowed_groups=bfda32b2-9ddd-4295-ac78-c6f6432d5139;
+
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Forwarded-Uri $request_uri;
+
+              proxy_set_header Content-Length "";
+              proxy_pass_request_body off;
+          }
+
           location / {
+              auth_request /oauth2/auth-akatsuki;
+              error_page 401 = @oauth2_signin;
+
               proxy_pass http://127.0.0.1:8081;
           }
-      }
 
-      server {
-          listen 80;
-          server_name pirates.twlabs.cloud;
-
-          location / {
-              proxy_pass http://127.0.0.1:8082;
+          location @oauth2_signin {
+              return 302 /oauth2/sign_in?rd=$scheme://$host$request_uri;
           }
       }
 
       server {
-          listen 80;
-          server_name avengers.twlabs.cloud;
+          listen 443 ssl;
+          server_name pirates.twlabs.cloud;
+
+          ssl_certificate /etc/nginx/tls/fullchain.pem;
+          ssl_certificate_key /etc/nginx/tls/privkey.pem;
+
+          location /oauth2/ {
+              proxy_pass http://127.0.0.1:4180;
+
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Auth-Request-Redirect $scheme://$host$request_uri;
+          }
+
+          location = /oauth2/auth-pirates {
+              internal;
+
+              proxy_pass http://127.0.0.1:4180/oauth2/auth?allowed_groups=32e316f0-8c3a-4332-aefd-2ab0c8866497;
+
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Forwarded-Uri $request_uri;
+
+              proxy_set_header Content-Length "";
+              proxy_pass_request_body off;
+          }
 
           location / {
+              auth_request /oauth2/auth-pirates;
+              error_page 401 = @oauth2_signin;
+
+              proxy_pass http://127.0.0.1:8082;
+          }
+
+          location @oauth2_signin {
+              return 302 /oauth2/sign_in?rd=$scheme://$host$request_uri;
+          }
+      }
+
+      server {
+          listen 443 ssl;
+          server_name avengers.twlabs.cloud;
+
+          ssl_certificate /etc/nginx/tls/fullchain.pem;
+          ssl_certificate_key /etc/nginx/tls/privkey.pem;
+
+          location /oauth2/ {
+              proxy_pass http://127.0.0.1:4180;
+
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Auth-Request-Redirect $scheme://$host$request_uri;
+          }
+
+          location = /oauth2/auth-avengers {
+              internal;
+
+              proxy_pass http://127.0.0.1:4180/oauth2/auth?allowed_groups=e5df9d74-a728-473f-b125-72273bd07680;
+
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Forwarded-Uri $request_uri;
+
+              proxy_set_header Content-Length "";
+              proxy_pass_request_body off;
+          }
+
+          location / {
+              auth_request /oauth2/auth-avengers;
+              error_page 401 = @oauth2_signin;
+
               proxy_pass http://127.0.0.1:8083;
+          }
+
+          location @oauth2_signin {
+              return 302 /oauth2/sign_in?rd=$scheme://$host$request_uri;
           }
       }
 
@@ -38,14 +150,14 @@ runcmd:
     done
 
   - apt-get update
-  - apt-get install -y docker.io nginx apt-transport-https ca-certificates curl gnupg lsb-release
+  - apt-get install -y docker.io nginx openssl apt-transport-https ca-certificates curl gnupg lsb-release
 
   - systemctl enable --now docker
   - systemctl enable --now nginx
 
   - mkdir -p /opt/twlabs
-
   - mkdir -p /etc/apt/keyrings
+  - mkdir -p /etc/nginx/tls
 
   - curl -sLS https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg
 
@@ -64,10 +176,61 @@ runcmd:
   - apt-get install -y azure-cli
 
   - |
+    command -v az >/dev/null 2>&1 || {
+      echo "Azure CLI installation failed"
+      exit 1
+    }
+
+  - |
     until az login --identity >/dev/null 2>&1; do
       echo "Waiting for managed identity..."
       sleep 5
     done
+
+  - |
+    az keyvault secret download \
+      --vault-name kv-twlabs-hybrid \
+      --name twlabs-cloud \
+      --file /etc/nginx/tls/twlabs-cloud.pfx \
+      --encoding base64
+
+  - |
+    openssl pkcs12 \
+      -in /etc/nginx/tls/twlabs-cloud.pfx \
+      -nokeys \
+      -out /etc/nginx/tls/fullchain.pem \
+      -passin pass:
+
+  - |
+    openssl pkcs12 \
+      -in /etc/nginx/tls/twlabs-cloud.pfx \
+      -nocerts \
+      -nodes \
+      -out /etc/nginx/tls/privkey.pem \
+      -passin pass:
+
+  - chmod 600 /etc/nginx/tls/privkey.pem
+  - chmod 644 /etc/nginx/tls/fullchain.pem
+  - rm -f /etc/nginx/tls/twlabs-cloud.pfx
+
+  - |
+    az keyvault secret show \
+      --vault-name kv-twlabs-hybrid \
+      --name entra-oauth2-client-secret \
+      --query value \
+      -o tsv | tr -d '\r\n' > /opt/twlabs/oauth2-client-secret
+
+  - |
+    az keyvault secret show \
+      --vault-name kv-twlabs-hybrid \
+      --name oauth2-cookie-secret \
+      --query value \
+      -o tsv | tr -d '\r\n' | base64 -d > /opt/twlabs/oauth2-cookie-secret
+
+  - chown 65532:65532 /opt/twlabs/oauth2-client-secret
+  - chown 65532:65532 /opt/twlabs/oauth2-cookie-secret
+  - chmod 600 /opt/twlabs/oauth2-client-secret
+  - chmod 600 /opt/twlabs/oauth2-cookie-secret
 
   - |
     until az acr login --name acrtwlabsapps; do
@@ -78,13 +241,39 @@ runcmd:
   - docker pull acrtwlabsapps.azurecr.io/twlabs-akatsuki:1.0
   - docker pull acrtwlabsapps.azurecr.io/twlabs-pirates:1.0
   - docker pull acrtwlabsapps.azurecr.io/twlabs-avengers:1.0
+  - docker pull quay.io/oauth2-proxy/oauth2-proxy:latest
 
   - docker run -d --restart unless-stopped --name akatsuki -p 8081:80 acrtwlabsapps.azurecr.io/twlabs-akatsuki:1.0
   - docker run -d --restart unless-stopped --name pirates -p 8082:80 acrtwlabsapps.azurecr.io/twlabs-pirates:1.0
   - docker run -d --restart unless-stopped --name avengers -p 8083:80 acrtwlabsapps.azurecr.io/twlabs-avengers:1.0
 
+  - |
+    docker run -d \
+      --restart unless-stopped \
+      --name oauth2-proxy \
+      -p 127.0.0.1:4180:4180 \
+      -v /opt/twlabs/oauth2-client-secret:/run/secrets/client-secret:ro \
+      -v /opt/twlabs/oauth2-cookie-secret:/run/secrets/cookie-secret:ro \
+      quay.io/oauth2-proxy/oauth2-proxy:latest \
+      --provider=entra-id \
+      --oidc-issuer-url=https://login.microsoftonline.com/ab6c1669-d87b-42ee-8d17-6aab46aa3fe7/v2.0 \
+      --client-id=e9cc6654-e31b-4f27-ad05-4ef8730ac1ef \
+      --client-secret-file=/run/secrets/client-secret \
+      --cookie-secret-file=/run/secrets/cookie-secret \
+      --redirect-url=https://akatsuki.twlabs.cloud/oauth2/callback \
+      --email-domain="*" \
+      --scope=openid \
+      --http-address=0.0.0.0:4180 \
+      --reverse-proxy=true \
+      --trusted-proxy-ip=127.0.0.1/32 \
+      --set-xauthrequest=true \
+      --cookie-domain=.twlabs.cloud \
+      --whitelist-domain=.twlabs.cloud \
+      --skip-provider-button=true
+
   - rm -f /etc/nginx/sites-enabled/default
   - ln -s /etc/nginx/sites-available/twlabs-apps /etc/nginx/sites-enabled/twlabs-apps
+
   - nginx -t
   - systemctl reload nginx
 

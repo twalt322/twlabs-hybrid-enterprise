@@ -74,6 +74,12 @@ resource "azurerm_role_assignment" "vmss_acr_pull" {
   principal_id         = module.compute.principal_id
 }
 
+resource "azurerm_role_assignment" "vmss_key_vault_secrets_user" {
+  scope                = data.terraform_remote_state.foundation.outputs.key_vault_id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = module.compute.principal_id
+}
+
 resource "azurerm_lb" "internal" {
   name                = "lb-twlabs-internal"
   location            = data.terraform_remote_state.foundation.outputs.location
@@ -111,4 +117,22 @@ resource "azurerm_lb_rule" "http" {
   frontend_ip_configuration_name = "internal-frontend"
   backend_address_pool_ids       = [azurerm_lb_backend_address_pool.vmss.id]
   probe_id                       = azurerm_lb_probe.http.id
+}
+
+resource "azurerm_lb_probe" "https" {
+  loadbalancer_id = azurerm_lb.internal.id
+  name            = "probe-https"
+  port            = 443
+  protocol        = "Tcp"
+}
+
+resource "azurerm_lb_rule" "https" {
+  loadbalancer_id                = azurerm_lb.internal.id
+  name                           = "rule-https"
+  protocol                       = "Tcp"
+  frontend_port                  = 443
+  backend_port                   = 443
+  frontend_ip_configuration_name = "internal-frontend"
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.vmss.id]
+  probe_id                       = azurerm_lb_probe.https.id
 }
