@@ -20,6 +20,10 @@ write_files:
           location /oauth2/ {
               proxy_pass http://127.0.0.1:4180;
 
+              proxy_buffer_size 16k;
+              proxy_buffers 8 16k;
+              proxy_busy_buffers_size 32k;
+
               proxy_set_header Host $host;
               proxy_set_header X-Real-IP $remote_addr;
               proxy_set_header X-Forwarded-Proto $scheme;
@@ -64,6 +68,10 @@ write_files:
           location /oauth2/ {
               proxy_pass http://127.0.0.1:4180;
 
+              proxy_buffer_size 16k;
+              proxy_buffers 8 16k;
+              proxy_busy_buffers_size 32k;
+
               proxy_set_header Host $host;
               proxy_set_header X-Real-IP $remote_addr;
               proxy_set_header X-Forwarded-Proto $scheme;
@@ -107,6 +115,10 @@ write_files:
 
           location /oauth2/ {
               proxy_pass http://127.0.0.1:4180;
+
+              proxy_buffer_size 16k;
+              proxy_buffers 8 16k;
+              proxy_busy_buffers_size 32k;
 
               proxy_set_header Host $host;
               proxy_set_header X-Real-IP $remote_addr;
@@ -262,7 +274,8 @@ runcmd:
       --cookie-secret-file=/run/secrets/cookie-secret \
       --redirect-url=https://akatsuki.twlabs.cloud/oauth2/callback \
       --email-domain="*" \
-      --scope=openid \
+      --scope="openid profile" \
+      --oidc-email-claim=preferred_username \
       --http-address=0.0.0.0:4180 \
       --reverse-proxy=true \
       --trusted-proxy-ip=127.0.0.1/32 \
