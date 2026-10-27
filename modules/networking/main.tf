@@ -30,6 +30,125 @@ resource "azurerm_network_security_group" "workload" {
   tags = var.tags
 }
 
+resource "azurerm_network_security_rule" "allow_onprem_web" {
+  name                        = "allow-onprem-web"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+
+  source_port_range           = "*"
+  destination_port_ranges     = ["80", "443"]
+
+  source_address_prefix       = var.onprem_address_space
+  destination_address_prefix  = "*"
+
+  resource_group_name         = var.resource_group_name
+  network_security_group_name = azurerm_network_security_group.workload.name
+}
+
+resource "azurerm_network_security_rule" "allow_lb_probe" {
+  name                        = "allow-azure-lb-probe"
+  priority                    = 110
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+
+  source_port_range           = "*"
+  destination_port_ranges     = ["80", "443"]
+
+  source_address_prefix       = "AzureLoadBalancer"
+  destination_address_prefix  = "*"
+
+  resource_group_name         = var.resource_group_name
+  network_security_group_name = azurerm_network_security_group.workload.name
+}
+
+resource "azurerm_network_security_rule" "allow_dns_udp" {
+  name                        = "allow-dns-udp"
+  priority                    = 100
+  direction                   = "Outbound"
+  access                      = "Allow"
+  protocol                    = "Udp"
+
+  source_port_range           = "*"
+  destination_port_range      = "53"
+
+  source_address_prefix       = "*"
+  destination_address_prefix  = var.dns_server_ip
+
+  resource_group_name         = var.resource_group_name
+  network_security_group_name = azurerm_network_security_group.workload.name
+}
+
+resource "azurerm_network_security_rule" "allow_dns_tcp" {
+  name                        = "allow-dns-tcp"
+  priority                    = 110
+  direction                   = "Outbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+
+  source_port_range           = "*"
+  destination_port_range      = "53"
+
+  source_address_prefix       = "*"
+  destination_address_prefix  = var.dns_server_ip
+
+  resource_group_name         = var.resource_group_name
+  network_security_group_name = azurerm_network_security_group.workload.name
+}
+
+resource "azurerm_network_security_rule" "allow_https_outbound" {
+  name                        = "allow-https-outbound"
+  priority                    = 120
+  direction                   = "Outbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+
+  source_port_range           = "*"
+  destination_port_range      = "443"
+
+  source_address_prefix       = "*"
+  destination_address_prefix  = "Internet"
+
+  resource_group_name         = var.resource_group_name
+  network_security_group_name = azurerm_network_security_group.workload.name
+}
+
+resource "azurerm_network_security_rule" "deny_other_inbound" {
+  name                        = "deny-other-inbound"
+  priority                    = 4000
+  direction                   = "Inbound"
+  access                      = "Deny"
+  protocol                    = "*"
+
+  source_port_range           = "*"
+  destination_port_range      = "*"
+
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+
+  resource_group_name         = var.resource_group_name
+  network_security_group_name = azurerm_network_security_group.workload.name
+}
+
+resource "azurerm_network_security_rule" "deny_other_outbound" {
+  name                        = "deny-other-outbound"
+  priority                    = 4000
+  direction                   = "Outbound"
+  access                      = "Deny"
+  protocol                    = "*"
+
+  source_port_range           = "*"
+  destination_port_range      = "*"
+
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+
+  resource_group_name         = var.resource_group_name
+  network_security_group_name = azurerm_network_security_group.workload.name
+}
+
 resource "azurerm_subnet_network_security_group_association" "workload" {
   subnet_id                 = azurerm_subnet.workload.id
   network_security_group_id = azurerm_network_security_group.workload.id

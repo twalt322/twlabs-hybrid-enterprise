@@ -136,3 +136,35 @@ resource "azurerm_lb_rule" "https" {
   backend_address_pool_ids       = [azurerm_lb_backend_address_pool.vmss.id]
   probe_id                       = azurerm_lb_probe.https.id
 }
+
+resource "azurerm_public_ip" "nat" {
+  name                = "pip-nat-gateway"
+  location            = local.location
+  resource_group_name = data.terraform_remote_state.foundation.outputs.resource_group_name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  zones               = ["1"]
+
+  tags = local.common_tags
+}
+
+resource "azurerm_nat_gateway" "nat" {
+  name                    = "ng-twlabs-hybrid"
+  location                = local.location
+  resource_group_name     = data.terraform_remote_state.foundation.outputs.resource_group_name
+  sku_name                = "Standard"
+  idle_timeout_in_minutes = 10
+  zones                   = ["1"]
+
+  tags = local.common_tags
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "nat_pip" {
+  nat_gateway_id       = azurerm_nat_gateway.nat.id
+  public_ip_address_id = azurerm_public_ip.nat.id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "nat_snet" {
+  subnet_id      = data.terraform_remote_state.foundation.outputs.workload_subnet_id
+  nat_gateway_id = azurerm_nat_gateway.nat.id
+}

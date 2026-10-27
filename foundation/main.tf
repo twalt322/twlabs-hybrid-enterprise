@@ -21,6 +21,8 @@ module "networking" {
   gateway_subnet_prefixes  = ["10.0.40.128/27"]
   nsg_name                 = "nsg-snet-workload"
   dns_servers              = ["192.168.40.10"]
+  onprem_address_space     = "192.168.40.0/24"
+  dns_server_ip            = "192.168.40.10"
 
   tags = local.common_tags
 }

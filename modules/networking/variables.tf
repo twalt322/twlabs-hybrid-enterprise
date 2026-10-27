@@ -42,3 +42,13 @@ variable "dns_servers" {
   type        = list(string)
   description = "Custom DNS servers for the virtual network"
 }
+
+variable "onprem_address_space" {
+  description = "On-premises network allowed to access Azure workloads"
+  type        = string
+}
+
+variable "dns_server_ip" {
+  description = "On-premises DNS server used by Azure workloads"
+  type        = string
+}
