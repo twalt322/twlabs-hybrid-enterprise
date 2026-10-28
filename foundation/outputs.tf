@@ -41,3 +41,11 @@ output "acr_login_server" {
 output "acr_id" {
   value = azurerm_container_registry.apps.id
 }
+
+output "log_analytics_workspace_id" {
+  value = azurerm_log_analytics_workspace.main.id
+}
+
+output "log_analytics_workspace_name" {
+  value = azurerm_log_analytics_workspace.main.name
+}
